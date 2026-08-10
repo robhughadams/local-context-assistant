@@ -1,0 +1,29 @@
+{
+  "name": "local-context-assistant",
+  "version": "0.1.0",
+  "description": "Local-only context indexing and retrieval assistant",
+  "license": "AGPL-3.0-or-later",
+  "private": false,
+  "type": "commonjs",
+  "bin": {
+    "lca": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "clean": "rm -rf dist .lca"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "@types/node": "^22.14.0",
+    "@typescript-eslint/eslint-plugin": "^8.43.0",
+    "@typescript-eslint/parser": "^8.43.0",
+    "eslint": "^9.34.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.lca/
+
+# Coverage and test artifacts
+coverage/
+.nyc_output/
+*.lcov
+
+# Test temp files
+tmp/
+temp/
+.tmp/
