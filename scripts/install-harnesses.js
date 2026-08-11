@@ -64,22 +64,41 @@ function ensureObject(value) {
   return {};
 }
 
+function opencodeCommandTemplate() {
+  return [
+    "---",
+    "description: Run Local Context Assistant CLI",
+    "---",
+    "",
+    "Run Local Context Assistant and return the complete CLI output:",
+    `!\`node \"${cliPath}\" $ARGUMENTS\``,
+    ""
+  ].join("\n");
+}
+
 function installOpencode() {
+  const configDir = path.join(homeDir, ".config", "opencode");
   const configPath = path.join(homeDir, ".config", "opencode", "opencode.json");
   const config = ensureObject(readJson(configPath, {}));
-  const commands = ensureObject(config.commands);
 
-  commands.lca = {
-    description: "Local Context Assistant CLI",
-    command: "node",
-    args: [cliPath],
-    cwd: projectRoot
-  };
+  // `commands` (plural) is not a valid OpenCode config key and breaks startup schema validation.
+  if (Object.prototype.hasOwnProperty.call(config, "commands")) {
+    delete config.commands;
+  }
 
-  config.commands = commands;
   writeJson(configPath, config);
 
-  return configPath;
+  const commandsDir = path.join(configDir, "commands");
+  const commandPath = path.join(commandsDir, "lca.md");
+  fs.mkdirSync(commandsDir, { recursive: true });
+
+  const nextCommandFile = opencodeCommandTemplate();
+  const currentCommandFile = fs.existsSync(commandPath) ? fs.readFileSync(commandPath, "utf8") : null;
+  if (currentCommandFile !== nextCommandFile) {
+    fs.writeFileSync(commandPath, nextCommandFile, "utf8");
+  }
+
+  return { configPath, commandPath };
 }
 
 function installClaude() {
@@ -129,7 +148,12 @@ function main() {
 
   console.log("Installed Local Context Assistant command registrations:");
   for (const [harness, installPath] of Object.entries(installedPaths)) {
-    console.log(`- ${harness}: ${installPath}`);
+    if (typeof installPath === "string") {
+      console.log(`- ${harness}: ${installPath}`);
+      continue;
+    }
+
+    console.log(`- ${harness}: ${installPath.configPath} (config), ${installPath.commandPath} (command)`);
   }
 }
 

@@ -185,11 +185,13 @@ What it does:
 1. Ensures dependencies exist (`npm install` if `node_modules/` is missing).
 2. Ensures CLI artifact exists (`npm run build` if `dist/cli.js` is missing).
 3. Registers an `lca` command entry for each local harness by merging into existing JSON config files (non-destructive, idempotent):
-   - OpenCode: `~/.config/opencode/opencode.json`
+   - OpenCode:
+     - Ensures `~/.config/opencode/opencode.json` remains schema-valid (no invalid `commands` key)
+     - Writes `~/.config/opencode/commands/lca.md` as the command registration
    - Claude: `~/.claude/settings.local.json`
    - Kiro CLI: `~/.kiro/settings/cli.json`
 
-Each harness gets this command registration shape:
+Claude/Kiro use this command registration shape:
 
 ```json
 {
@@ -199,3 +201,5 @@ Each harness gets this command registration shape:
   "cwd": "/absolute/path/to/local-context-assistant"
 }
 ```
+
+OpenCode uses its supported command surface (`command` config key and/or markdown files under `commands/`); this installer registers LCA via markdown in `~/.config/opencode/commands/lca.md`.
