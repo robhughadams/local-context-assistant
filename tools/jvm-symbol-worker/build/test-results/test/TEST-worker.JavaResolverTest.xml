@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="worker.JavaResolverTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-08-11T23:51:54.031Z" hostname="localhost" time="1.4">
+  <properties/>
+  <testcase name="unknownSymbolReturnsEmptyResults()" classname="worker.JavaResolverTest" time="0.842"/>
+  <testcase name="findMethodReturnsMethod()" classname="worker.JavaResolverTest" time="0.199"/>
+  <testcase name="refsIncludeUsageAcrossFiles()" classname="worker.JavaResolverTest" time="0.3"/>
+  <testcase name="findClassReturnsClassDefinition()" classname="worker.JavaResolverTest" time="0.046"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="worker.KotlinResolverTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-08-11T23:51:55.446Z" hostname="localhost" time="12.702">
+  <properties/>
+  <testcase name="findFunctionInObject()" classname="worker.KotlinResolverTest" time="11.013"/>
+  <testcase name="findDataClassReturnsDataClass()" classname="worker.KotlinResolverTest" time="0.873"/>
+  <testcase name="refsIncludeUsageAcrossFiles()" classname="worker.KotlinResolverTest" time="0.438"/>
+  <testcase name="refsForConstructorFunctionUsage()" classname="worker.KotlinResolverTest" time="0.372"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
