@@ -22,7 +22,7 @@ No cloud APIs and no remote dependencies are required at runtime.
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 22+ (Node 18+ for runtime usage of the built CLI)
 
 ## Setup
 
