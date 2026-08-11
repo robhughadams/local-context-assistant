@@ -23,14 +23,22 @@ jobs:
         with:
           node-version: 22
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
       - name: Install dependencies
         run: npm install
 
       - name: Lint
         run: npm run lint
 
-      - name: Test
-        run: npm test
-
       - name: Build
         run: npm run build
+
+      - name: Test C# worker
+        run: dotnet test tools/csharp-roslyn-worker/Worker.Tests/Worker.Tests.csproj -c Release
+
+      - name: Test
+        run: npm test

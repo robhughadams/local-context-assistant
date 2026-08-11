@@ -6,7 +6,7 @@ import { WorkspaceManager } from "./workspace-manager";
 
 type CliCommand = "init" | "sync" | "ask" | "watch" | "symbol" | "mcp";
 type SymbolSubcommand = "find" | "refs";
-type SymbolLanguage = "typescript" | "python" | "all";
+type SymbolLanguage = "typescript" | "python" | "csharp" | "all";
 type McpSubcommand = "init-policy" | "list-tools" | "run-tool";
 
 type JsonEligibleCommand = "ask" | "symbol" | "mcp";
@@ -249,7 +249,7 @@ function parseSymbolArgs(args: string[]): { symbol: string; language: SymbolLang
     if (token === "--lang") {
       const langValue = args[index + 1];
       if (!isLanguage(langValue)) {
-        throw new Error("Invalid language. Use --lang typescript|python|all.");
+        throw new Error("Invalid language. Use --lang typescript|python|csharp|all.");
       }
       language = langValue;
       index += 1;
@@ -265,7 +265,7 @@ function parseSymbolArgs(args: string[]): { symbol: string; language: SymbolLang
 }
 
 function isLanguage(value: string | undefined): value is SymbolLanguage {
-  return value === "typescript" || value === "python" || value === "all";
+  return value === "typescript" || value === "python" || value === "csharp" || value === "all";
 }
 
 function isMcpSubcommand(value: string): value is McpSubcommand {
@@ -378,8 +378,8 @@ function printUsage(io: CliIo): void {
   io.stdout("  lca sync");
   io.stdout("  lca ask <query> [--json]");
   io.stdout("  lca watch");
-  io.stdout("  lca symbol find <symbol> [--lang typescript|python|all] [--json]");
-  io.stdout("  lca symbol refs <symbol> [--lang typescript|python|all] [--json]");
+  io.stdout("  lca symbol find <symbol> [--lang typescript|python|csharp|all] [--json]");
+  io.stdout("  lca symbol refs <symbol> [--lang typescript|python|csharp|all] [--json]");
   io.stdout("  lca mcp init-policy [--json]");
   io.stdout("  lca mcp list-tools [--json]");
   io.stdout("  lca mcp run-tool <tool-name> [--dry-run] [--json]");

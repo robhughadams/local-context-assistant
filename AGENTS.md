@@ -31,7 +31,7 @@ CI (GitHub Actions, `.github/workflows/ci.yml`) runs lint, test, and build on No
 - `src/cli.ts`, `src/cli-runner.ts` - entry point and argument parsing/rendering
 - `src/workspace-manager.ts` - root discovery, file candidates, watcher hook
 - `src/lexical-index.ts`, `src/tokenizer.ts` - deterministic TF-IDF-style retrieval
-- `src/semantic/` - navigators: `typescript-navigator.ts` (compiler API), `python-navigator.ts` (heuristics), `semantic-navigator.ts` (dispatch); `csharp-navigator.ts` will spawn the Roslyn worker
+- `src/semantic/` - navigators: `typescript-navigator.ts` (compiler API), `python-navigator.ts` (heuristics), `csharp-navigator.ts` (spawns the Roslyn worker), `semantic-navigator.ts` (dispatch)
 - `src/mcp/` - policy store, gateway, audit logger
 - `src/session-store.ts`, `src/config.ts`, `src/fs-utils.ts`, `src/runtime.ts`, `src/types.ts`
 - `tests/` - vitest suites (cli-json, lexical-index, mcp-gateway, semantic-navigator)

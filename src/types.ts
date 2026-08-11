@@ -67,7 +67,7 @@ export interface SessionStoreFile {
   sessions: SessionRecord[];
 }
 
-export type SupportedSymbolLanguage = "typescript" | "python";
+export type SupportedSymbolLanguage = "typescript" | "python" | "csharp";
 
 export type SymbolMatchKind = "definition" | "reference";
 

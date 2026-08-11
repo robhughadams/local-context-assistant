@@ -22,6 +22,12 @@ public static class RoslynWorker
     private static readonly object MsBuildRegistrationLock = new();
     private static bool _msBuildRegistered;
 
+    private enum SymbolQueryMode
+    {
+        Find,
+        Refs
+    }
+
     public static async Task<WorkerResponse> ExecuteAsync(WorkerRequest request)
     {
         if (request.Version != 1)
@@ -62,8 +68,23 @@ public static class RoslynWorker
         EnsureMsBuildRegistered();
 
         using var workspace = MSBuildWorkspace.Create();
+        workspace.WorkspaceFailed += (_, args) =>
+        {
+            if (args.Diagnostic.Kind == WorkspaceDiagnosticKind.Failure)
+            {
+                Console.Error.WriteLine($"Workspace failure: {args.Diagnostic.Message}");
+            }
+        };
+
         foreach (var project in projects)
         {
+            var alreadyOpen = workspace.CurrentSolution.Projects
+                .Any(open => string.Equals(open.FilePath, Path.GetFullPath(project), StringComparison.OrdinalIgnoreCase));
+            if (alreadyOpen)
+            {
+                continue;
+            }
+
             if (string.Equals(Path.GetExtension(project), ".sln", StringComparison.OrdinalIgnoreCase))
             {
                 await workspace.OpenSolutionAsync(project, cancellationToken: CancellationToken.None);
@@ -131,15 +152,25 @@ public static class RoslynWorker
 
     private static async Task<List<SymbolLocationDto>> FindDefinitionsAsync(Solution solution, string root, string symbol)
     {
-        var symbols = await SymbolFinder.FindDeclarationsAsync(solution, symbol, ignoreCase: false, CancellationToken.None);
         var output = new List<SymbolLocationDto>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
+        var emitted = new List<ISymbol>();
 
-        foreach (var declaration in symbols)
+        foreach (var project in solution.Projects)
         {
-            foreach (var location in declaration.Locations)
+            var symbols = await SymbolFinder.FindDeclarationsAsync(project, symbol, ignoreCase: false, CancellationToken.None);
+            foreach (var declaration in symbols)
             {
-                AddLocation(output, seen, declaration, "definition", "definition", root, symbol, location, "high");
+                if (emitted.Any(existing => SymbolEqualityComparer.Default.Equals(existing, declaration)))
+                {
+                    continue;
+                }
+
+                emitted.Add(declaration);
+                foreach (var location in declaration.Locations)
+                {
+                    AddLocation(output, seen, declaration, "definition", "definition", root, symbol, location, "high");
+                }
             }
         }
 
@@ -148,31 +179,38 @@ public static class RoslynWorker
 
     private static async Task<List<SymbolLocationDto>> FindReferencesAsync(Solution solution, string root, string symbol)
     {
-        var declarations = await SymbolFinder.FindDeclarationsAsync(solution, symbol, ignoreCase: false, CancellationToken.None);
         var output = new List<SymbolLocationDto>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
+        var emitted = new List<ISymbol>();
 
-        foreach (var declaration in declarations)
+        foreach (var project in solution.Projects)
         {
-            foreach (var location in declaration.Locations)
+            var declarations = await SymbolFinder.FindDeclarationsAsync(project, symbol, ignoreCase: false, CancellationToken.None);
+            foreach (var declaration in declarations)
             {
-                AddLocation(output, seen, declaration, "reference", "definition-reference", root, symbol, location, "high");
-            }
-
-            var references = await SymbolFinder.FindReferencesAsync(declaration, solution, CancellationToken.None);
-            foreach (var referencedSymbol in references)
-            {
-                foreach (var reference in referencedSymbol.Locations)
+                if (emitted.Any(existing => SymbolEqualityComparer.Default.Equals(existing, declaration)))
                 {
-                    if (reference.IsImplicit)
-                    {
-                        continue;
-                    }
+                    continue;
+                }
 
-                    AddLocation(output, seen, declaration, "reference", "reference", root, symbol, reference.Location, "medium");
-                    foreach (var additional in reference.AdditionalLocations)
+                emitted.Add(declaration);
+
+                foreach (var location in declaration.Locations)
+                {
+                    AddLocation(output, seen, declaration, "reference", "definition-reference", root, symbol, location, "high");
+                }
+
+                var references = await SymbolFinder.FindReferencesAsync(declaration, solution, CancellationToken.None);
+                foreach (var referencedSymbol in references)
+                {
+                    foreach (var reference in referencedSymbol.Locations)
                     {
-                        AddLocation(output, seen, declaration, "reference", "reference", root, symbol, additional, "medium");
+                        if (reference.IsImplicit)
+                        {
+                            continue;
+                        }
+
+                        AddLocation(output, seen, declaration, "reference", "reference", root, symbol, reference.Location, "medium");
                     }
                 }
             }
@@ -226,17 +264,7 @@ public static class RoslynWorker
     internal static string RoleFor(ISymbol symbol) => symbol.Kind switch
     {
         SymbolKind.Namespace => "namespace",
-        SymbolKind.NamedType => ((INamedTypeSymbol)symbol).TypeKind switch
-        {
-            TypeKind.Class => "class",
-            TypeKind.Struct => "struct",
-            TypeKind.Interface => "interface",
-            TypeKind.Enum => "enum",
-            TypeKind.Delegate => "delegate",
-            TypeKind.Record => "record",
-            TypeKind.RecordStruct => "record-struct",
-            _ => "type"
-        },
+        SymbolKind.NamedType => NamedTypeRole((INamedTypeSymbol)symbol),
         SymbolKind.Method => MethodRole((IMethodSymbol)symbol),
         SymbolKind.Property => "property",
         SymbolKind.Field => "field",
@@ -247,12 +275,24 @@ public static class RoslynWorker
         _ => symbol.Kind.ToString().ToLowerInvariant()
     };
 
+    private static string NamedTypeRole(INamedTypeSymbol type) => (type.TypeKind, type.IsRecord) switch
+    {
+        (TypeKind.Class, true) => "record",
+        (TypeKind.Class, false) => "class",
+        (TypeKind.Struct, true) => "record-struct",
+        (TypeKind.Struct, false) => "struct",
+        (TypeKind.Interface, _) => "interface",
+        (TypeKind.Enum, _) => "enum",
+        (TypeKind.Delegate, _) => "delegate",
+        _ => "type"
+    };
+
     private static string MethodRole(IMethodSymbol method) => method.MethodKind switch
     {
         MethodKind.Constructor => "constructor",
         MethodKind.StaticConstructor => "static-constructor",
         MethodKind.Destructor => "destructor",
-        MethodKind.Operator => "operator",
+        MethodKind.UserDefinedOperator => "operator",
         MethodKind.Conversion => "conversion-operator",
         MethodKind.LocalFunction => "local-function",
         _ => "method"

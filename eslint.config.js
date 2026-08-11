@@ -18,7 +18,11 @@ module.exports = [
         process: "readonly",
         console: "readonly",
         require: "readonly",
-        module: "readonly"
+        module: "readonly",
+        Buffer: "readonly",
+        __dirname: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly"
       }
     },
     plugins: {

@@ -143,7 +143,9 @@ Errors: `{"ok": false, "error": "..."}` on stdout plus non-zero exit code. Node 
 
 ## 9) Status
 
-- [ ] Phase 1: Roslyn worker
-- [ ] Phase 2: Node integration
-- [ ] Phase 3: Build, CI, tests
-- [ ] Phase 4: Docs
+- [x] Phase 1: Roslyn worker
+- [x] Phase 2: Node integration
+- [x] Phase 3: Build, CI, tests
+- [x] Phase 4: Docs
+
+Known environment caveat: `dotnet test` cannot run inside Android/UserLAnd sandboxes (vstest's dotnet-host architecture probe fails under proot - dotnet/sdk#43790); the xunit worker suite runs in GitHub Actions CI, while local verification uses the published worker via the stdin/stdout protocol.

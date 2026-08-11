@@ -68,6 +68,9 @@ npx lca symbol refs discoverProjectRoot --lang all --json
 # semantic references lookup
 npx lca symbol refs discoverProjectRoot --lang all
 
+# C# definition lookup (requires dotnet SDK; worker built by npm run build)
+npx lca symbol find Calculator --lang csharp
+
 # initialize MCP tool policy file (deny-by-default)
 npx lca mcp init-policy
 
@@ -135,12 +138,13 @@ Retrieval uses:
 
 - `lca symbol find <symbol>` returns definition candidates.
 - `lca symbol refs <symbol>` returns reference candidates.
-- `--lang` accepts `typescript`, `python`, or `all` (default).
+- `--lang` accepts `typescript`, `python`, `csharp`, or `all` (default).
 
 Output includes file/line/column plus confidence metadata:
 
 - TypeScript uses the local TypeScript compiler API (`source=typescript-compiler-api`) and returns high-confidence definitions/references in local workspace files.
 - Python uses pragmatic local heuristics (`source=python-heuristic`) with confidence levels (`high` / `medium` / `low`) to indicate certainty.
+- C# uses the Roslyn compiler API through a .NET worker (`source=roslyn-compiler-api`). The worker loads the workspace via MSBuildWorkspace, runs `dotnet restore` where needed, and resolves definitions and cross-project references with `SymbolFinder`. It is published to `dist/roslyn/` by `npm run build`; C# queries without a working `dotnet` are skipped in `--lang all` mode and error clearly in explicit `--lang csharp` mode.
 
 ## MCP gateway policy model (milestone C)
 
