@@ -17,12 +17,13 @@ lca symbol find Foo --lang csharp
    └─ SemanticNavigator (Node)
        └─ CSharpNavigator (src/semantic/csharp-navigator.ts)
            ├─ locates dist/roslyn/roslyn-worker.dll
-           ├─ spawns `dotnet dist/roslyn/roslyn-worker.dll`
-           │    └─ (tools/csharp-roslyn-worker/ - C# console app)
-           │        ├─ walks workspace for *.cs (same exclusions as TS navigator)
-           │        ├─ parses syntax trees, builds CSharpCompilation
-           │        │    (workspace sources only - no NuGet/package refs)
-           │        └─ finds definitions/references via SemanticModel
+           ├─ spawns `dotnet dist/roslyn/roslyn-worker.dll` (one-shot per query)
+           │    └─ (tools/csharp-roslyn-worker/ - C# console app, net10.0)
+           │        ├─ discovers .sln (preferred) or .csproj under the workspace
+           │        ├─ runs `dotnet restore` (toolchain download - allowed, see ADR-0001)
+           │        ├─ loads projects via MSBuildWorkspace
+           │        ├─ resolves symbols with SymbolFinder (definitions/references)
+           │        └─ drops results in bin/obj or outside the workspace root
            └─ ← JSON response on stdout, mapped to SymbolLocation[]
 ```
 
@@ -30,11 +31,12 @@ lca symbol find Foo --lang csharp
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Worker lifecycle | One-shot process per query | Simple, no state leaks, no stream protocol complexity; query latency is dominated by compile time anyway |
-| Project model | `CSharpCompilation` of workspace `*.cs` files, no `.csproj` loading | Mirrors the TS navigator's baseline (no cross-package resolution); zero network/restore; deterministic |
+| Worker lifecycle | One-shot process per query | Simple, no state leaks, no stream protocol complexity |
+| Project model | Full MSBuildWorkspace: `.sln` first, else `.csproj`, after `dotnet restore` | Real project boundaries, NuGet/package references, define constants (`#if DEBUG`) bind correctly; cross-project references resolve |
+| Restore | Runs inside the worker before loading | Toolchain download is allowed by the locality policy (ADR-0001); restore failure returns a structured error |
 | Missing `dotnet` | Clear, actionable error; `--json` errors still structured | Graceful degradation like other CLI errors |
 | Worker artifacts | Built into `dist/roslyn/` by `npm run build` | Self-contained for harness installs (`make install`) |
-| .NET version | Current LTS (net8.0 or later LTS available) | LTS security + hosted runner support |
+| .NET version | net10.0 (LTS) | Long-term support; present in CI via setup-dotnet |
 
 ## 3) JSON Protocol
 
@@ -74,19 +76,22 @@ Errors: `{"ok": false, "error": "..."}` on stdout plus non-zero exit code. Node 
 
 ## 4) Confidence and Coverage Model
 
-- **Definitions** (find): declarations found by symbol-name match on declaration identifiers, resolved through `SemanticModel` - `high` confidence.
-- **References** (refs): `IdentifierName`/`GenericName` nodes bound via `SemanticModel` to the same `ISymbol` (handles overloads, generics, member accesses). Entries whose bound symbol is a declaration site are `high`; plain usage sites are `medium` (mirrors the TS navigator).
-- Declaration kinds covered: `class`, `record`, `struct`, `interface`, `enum`, `namespace`, `method`, `constructor`, `property`, `field`, `event`, `parameter`, `local`.
+- **Definitions** (find): symbols resolved via `SymbolFinder.FindDeclarationsAsync` (exact, case-sensitive match) across the loaded solution - `high` confidence, `source: "roslyn-compiler-api"`.
+- **References** (refs): `SymbolFinder.FindReferencesAsync` per matched declaration. Declaration sites are emitted as `role: "definition-reference"` at `high` confidence; genuine usage sites (including cross-project and package-resolved ones) are `role: "reference"` at `medium` (mirrors the TS navigator).
+- Roles derive from `SymbolKind`/`TypeKind`/`MethodKind`: `class`, `record`, `struct`, `interface`, `enum`, `delegate`, `namespace`, `method`, `constructor`, `property`, `field`, `event`, `parameter`, `local`, `type-parameter`, and friends.
+- Partial declarations and source-generated symbols: all declaration locations of a matched symbol are returned; results inside `bin/`/`obj/` segments or outside the workspace root are filtered out.
 
 ## 5) Implementation Phases
 
 ### Phase 1 - Roslyn worker (C#, `tools/csharp-roslyn-worker/`)
 
-- `Worker.csproj` referencing `Microsoft.CodeAnalysis.CSharp` (no `Microsoft.CodeAnalysis.Workspaces` for MVP).
-- Workspace file discovery: recursive walk for `*.cs`, excluding `.git`, `node_modules`, `dist`, `.lca`, `coverage`, `build` (same set as `typescript-navigator.ts`).
-- `CSharpCompilation` built from syntax trees; permissive options (`optimization` off, all warnings as info) so incomplete projects still analyze.
-- Definition/reference resolution per the protocol above.
-- C# unit tests (xunit) for: discovery, definition kinds, reference binding, JSON serialization, empty workspace.
+- `Worker.csproj` (net10.0) referencing `Microsoft.CodeAnalysis.Workspaces.MSBuild` and `Microsoft.Build.Locator`.
+- Project discovery: recursive walk for `.sln` (preferred) or `.csproj`, excluding `.git`, `node_modules`, `dist`, `.lca`, `coverage`, `build`.
+- `dotnet restore` on each discovered project before workspace load; failures produce structured errors.
+- `MSBuildWorkspace` load (`OpenSolutionAsync`/`OpenProjectAsync`) with `MSBuildLocator.RegisterDefaults()`.
+- Definition/reference resolution via `SymbolFinder` per the protocol above.
+- Results filtered to workspace files, `bin`/`obj` segments dropped, deterministically sorted.
+- C# unit tests (xunit) for: discovery, definition roles, reference confidence, cross-project binding, protocol validation, restore/load failures.
 
 ### Phase 2 - Node integration
 
@@ -100,17 +105,17 @@ Errors: `{"ok": false, "error": "..."}` on stdout plus non-zero exit code. Node 
 
 ### Phase 3 - Build, CI, and tests
 
-- `npm run build` also builds the worker: `dotnet build tools/csharp-roslyn-worker -c Release -o dist/roslyn`.
+- `npm run build` also publishes the worker: `dotnet publish tools/csharp-roslyn-worker -c Release -o dist/roslyn`.
   - When `dotnet` is unavailable locally, skip with a warning (does not fail the JS build).
   - CI always installs the .NET SDK, so CI build is strict.
-- CI workflow: add `actions/setup-dotnet` step; add `dotnet build` + `dotnet test` steps for the worker.
-- Vitest suite: fixture C# workspace under `tests/fixtures/csharp/`; tests skipped when `dotnet` or the built worker DLL is unavailable.
+- CI workflow: add `actions/setup-dotnet` step; add `dotnet test` (xunit) + `dotnet publish` steps for the worker.
+- Vitest suite: fixture C# solution under `tests/fixtures/csharp/` (two projects, one cross-project reference); tests skipped when `dotnet` or the built worker DLL is unavailable.
 - Optional: `Makefile` `worker` target for rebuilding the worker without a full `npm run build`.
 
 ### Phase 4 - Docs
 
-- README: document `.NET SDK` as a runtime-optional requirement (only needed for `--lang csharp`), usage example, and the local-only scope of the analysis.
-- Update `Limitations` section: C# is syntax+compilation level; no `.csproj`/NuGet reference resolution yet.
+- README: document `.NET SDK` as a runtime-optional requirement (only needed for `--lang csharp`), usage example, and the locality policy (analysis local; toolchain downloads including NuGet restore allowed - ADR-0001).
+- Update `Limitations` section: C# queries require restore + network for packages; `.sln`-less workspaces fall back to `.csproj`; generated-code results are filtered.
 - This plan file's `Status` section updated as phases land.
 
 ## 6) Acceptance Criteria
@@ -123,16 +128,17 @@ Errors: `{"ok": false, "error": "..."}` on stdout plus non-zero exit code. Node 
 
 ## 7) Risks and Mitigations
 
-- **Compilation errors in real-world workspaces** -> permissive compilation settings; unresolved references degrade to name-matched `medium` results instead of failure.
-- **Roslyn compile latency on large repos** -> same order as the TS language-service startup today; one-shot processes avoid accumulation. Revisit with a persistent worker only if benchmarks demand it.
+- **Restore/network failures** -> restore errors are surfaced as structured errors naming `dotnet restore`; packages are cached locally after first restore, so repeat queries are offline-friendly once restored.
+- **Workspace load latency on large solutions** -> seconds to a minute on first load; one-shot processes avoid accumulation. Revisit with a persistent worker only if benchmarks demand it.
+- **Broken projects in a solution** -> MSBuildWorkspace reports failures without aborting; only query-relevant projects need to load.
 - **Worker/build drift** -> `dist/roslyn/` rebuilt on every `npm run build`; CI verifies worker builds.
 - **dotnet missing on user machines** -> runtime-optional dependency with explicit error, never blocks non-C# queries.
 
 ## 8) Out of Scope (later milestone)
 
-- `MSBuildWorkspace` project loading: real `.csproj`/`.sln`/NuGet reference resolution. Requires `dotnet restore` (network), so it is deferred to keep the no-remote-dependencies goal intact.
 - Persistent worker daemon and incremental compilation across queries.
 - Find-all-implementations / call-hierarchy depth.
+- `#if`-branch enumeration and multi-targeting matrix analysis (workspace loads with its default configuration).
 - C# lexical indexing improvements (beyond what the generic tokenizer already provides).
 
 ## 9) Status

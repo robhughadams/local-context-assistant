@@ -18,11 +18,18 @@ GitHub Actions runs `lint`, `test`, and `build` on pushes and pull requests targ
 - Local session persistence under workspace data.
 - MCP gateway with deny-by-default command policy and local audit logging.
 
-No cloud APIs and no remote dependencies are required at runtime.
+## Locality policy
+
+- **Analysis is strictly local.** Source code, index data, and session data never leave the machine. Nothing is sent to a remote server for analysis or indexing.
+- **Toolchain downloads are allowed.** Fetching packages to build/run the tool (npm install, NuGet restore for the Roslyn worker) is normal toolchain activity, not analysis.
+- Local data lives under `.lca/` (index, sessions, policy, action log).
+
+See `docs/adr/0001-analysis-is-strictly-local.md` for the full record.
 
 ## Requirements
 
 - Node.js 22+ (Node 18+ for runtime usage of the built CLI)
+- dotnet 10 SDK, only for C# symbol queries (`--lang csharp`)
 
 ## Setup
 

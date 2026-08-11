@@ -7,11 +7,11 @@ Guidance for human and AI contributors working in this repository.
 Local-first, open-source coding assistant (`lca`) with:
 
 - Lexical retrieval over workspaces (`lca init`, `lca sync`, `lca ask`)
-- Baseline semantic symbol navigation (`lca symbol find|refs`) for TypeScript (compiler API), Python (heuristics); C# via Roslyn is in progress (see `docs/csharp-roslyn-plan.md`)
+- Baseline semantic symbol navigation (`lca symbol find|refs`) for TypeScript (compiler API), Python (heuristics); C# via a Roslyn/MSBuildWorkspace worker (see `docs/adr/0002-csharp-roslyn-worker.md`)
 - MCP-style tool gateway with deny-by-default policy and audit log (`lca mcp`)
 - Local-only data under `.lca/` (index, sessions, policy, action log)
 
-No cloud APIs or remote runtime dependencies.
+Locality policy: analysis of source is strictly local (no remote analysis of code ever); toolchain downloads (npm install, NuGet restore) are allowed. See `docs/adr/`. Never introduce code paths that transmit source or index data to a remote server.
 
 ## Commands
 
@@ -35,9 +35,9 @@ CI (GitHub Actions, `.github/workflows/ci.yml`) runs lint, test, and build on No
 - `src/mcp/` - policy store, gateway, audit logger
 - `src/session-store.ts`, `src/config.ts`, `src/fs-utils.ts`, `src/runtime.ts`, `src/types.ts`
 - `tests/` - vitest suites (cli-json, lexical-index, mcp-gateway, semantic-navigator)
-- `tools/csharp-roslyn-worker/` - C# Roslyn worker console app (when Phase 1 lands)
+- `tools/csharp-roslyn-worker/` - C# Roslyn worker console app (MSBuildWorkspace + SymbolFinder)
 - `scripts/install-harnesses.js` - harness registration used by `make install`
-- `docs/` - implementation plan and language-adapter plans
+- `docs/` - implementation plan, ADR log (`docs/adr/`), and language-adapter plans
 
 ## Conventions
 

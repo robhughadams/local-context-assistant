@@ -61,7 +61,8 @@ The assistant is composed of six core subsystems:
 ## 5) Storage and Locality Guarantees
 
 - All indexes and session metadata are stored under a local data directory.
-- Source files are never uploaded by default.
+- Source files and analysis output are never sent to a remote server. Analysis is strictly local (see `docs/adr/0001-analysis-is-strictly-local.md`).
+- Toolchain downloads (npm packages, NuGet restore, SDK installs) are allowed; they are build tooling, not analysis.
 - Optional remote model providers are explicit opt-in.
 - A strict offline mode disables network access entirely.
 
