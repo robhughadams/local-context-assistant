@@ -77,4 +77,38 @@ describe("lexical index retrieval", () => {
     const sessionsRaw = await fs.readFile(sessionsPath, "utf8");
     expect(sessionsRaw).toContain("deterministic scoring");
   });
+
+  it("supports incremental sync for added, modified, and deleted files", async () => {
+    const workspaceRoot = await createTempWorkspace();
+    const alphaPath = path.join(workspaceRoot, "alpha.ts");
+    const betaPath = path.join(workspaceRoot, "beta.ts");
+
+    await fs.writeFile(alphaPath, "export const ALPHA_TOKEN = 'alpha-v1';\n", "utf8");
+    await fs.writeFile(betaPath, "export const BETA_TOKEN = 'beta-v1';\n", "utf8");
+
+    const runtime = new AssistantRuntime(workspaceRoot);
+    const init = await runtime.initializeIndex();
+    expect(init.fileCount).toBe(2);
+
+    await fs.writeFile(alphaPath, "export const ALPHA_TOKEN = 'alpha-v2-updated';\n", "utf8");
+    await fs.rm(betaPath);
+    await fs.writeFile(path.join(workspaceRoot, "gamma.ts"), "export const GAMMA_TOKEN = 'gamma-v1';\n", "utf8");
+
+    const sync = await runtime.syncIndex();
+    expect(sync.addedFiles).toBe(1);
+    expect(sync.modifiedFiles).toBe(1);
+    expect(sync.deletedFiles).toBe(1);
+    expect(sync.fileCount).toBe(2);
+
+    const updatedAlpha = await runtime.ask("alpha-v2-updated", 5);
+    expect(updatedAlpha.results.length).toBeGreaterThan(0);
+    expect(updatedAlpha.results[0]?.snippet.relativePath).toBe("alpha.ts");
+
+    const removedBeta = await runtime.ask("beta-v1", 5);
+    expect(removedBeta.results.some((entry) => entry.snippet.relativePath === "beta.ts")).toBe(false);
+
+    const addedGamma = await runtime.ask("gamma-v1", 5);
+    expect(addedGamma.results.length).toBeGreaterThan(0);
+    expect(addedGamma.results[0]?.snippet.relativePath).toBe("gamma.ts");
+  });
 });

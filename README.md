@@ -34,14 +34,23 @@ From your target workspace root:
 # build index
 npx lca init
 
+# incremental index sync (add/modify/delete detection)
+npx lca sync
+
 # ask a question
 npx lca ask "where is workspace root discovery"
+
+# ask as JSON
+npx lca ask "where is workspace root discovery" --json
 
 # optional basic watcher hook
 npx lca watch
 
 # semantic definition lookup
 npx lca symbol find discoverProjectRoot --lang typescript
+
+# semantic references lookup as JSON
+npx lca symbol refs discoverProjectRoot --lang all --json
 
 # semantic references lookup
 npx lca symbol refs discoverProjectRoot --lang all
@@ -57,7 +66,35 @@ npx lca mcp run-tool print-ok
 
 # preview run without executing
 npx lca mcp run-tool print-ok --dry-run
+
+# run tool with JSON output
+npx lca mcp run-tool print-ok --json
 ```
+
+## Incremental indexing
+
+`lca sync` compares current indexable workspace files with `.lca/index.json` and updates only changed paths.
+
+- additions: newly indexable files are indexed and added
+- modifications: files with changed `(mtimeMs,size)` are re-indexed
+- deletions: removed files are dropped from index/snippets
+- unchanged: untouched files are preserved
+
+The command persists the updated index and prints deterministic summary counts.
+
+## JSON output mode
+
+`--json` is supported on:
+
+- `lca ask`
+- `lca symbol find|refs`
+- `lca mcp init-policy|list-tools|run-tool`
+
+Behavior:
+
+- Default output remains human-readable text (backward compatible).
+- JSON mode prints a single JSON object to stdout with a stable command-specific shape.
+- Denials/errors still return structured JSON and preserve non-zero exit codes (for example MCP deny => exit code `2`).
 
 ## Data storage
 

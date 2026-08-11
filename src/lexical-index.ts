@@ -7,6 +7,7 @@ import { tokenFrequency, tokenize } from "./tokenizer";
 import type {
   FileCandidate,
   FileIndexRecord,
+  IndexSyncSummary,
   PersistedLexicalIndex,
   QueryResult,
   RankedSnippet,
@@ -74,6 +75,53 @@ export class LexicalIndex {
     }
 
     this.rebuildDocumentFrequency();
+  }
+
+  async syncFromFiles(files: FileCandidate[]): Promise<IndexSyncSummary> {
+    const existingByPath = new Map(this.files.map((file) => [file.relativePath, file]));
+    const incomingByPath = new Map(files.map((file) => [file.relativePath, file]));
+
+    let addedFiles = 0;
+    let modifiedFiles = 0;
+    let deletedFiles = 0;
+    let unchangedFiles = 0;
+
+    for (const [relativePath, indexedFile] of existingByPath.entries()) {
+      if (incomingByPath.has(relativePath)) {
+        continue;
+      }
+      this.removeFile(relativePath, indexedFile.snippetIds);
+      deletedFiles += 1;
+    }
+
+    const sortedIncoming = [...files].sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+    for (const file of sortedIncoming) {
+      const currentRecord = existingByPath.get(file.relativePath);
+      if (!currentRecord) {
+        await this.addOrReplaceFile(file);
+        addedFiles += 1;
+        continue;
+      }
+
+      if (currentRecord.mtimeMs === file.mtimeMs && currentRecord.size === file.size) {
+        unchangedFiles += 1;
+        continue;
+      }
+
+      await this.addOrReplaceFile(file);
+      modifiedFiles += 1;
+    }
+
+    this.rebuildDocumentFrequency();
+
+    return {
+      addedFiles,
+      modifiedFiles,
+      deletedFiles,
+      unchangedFiles,
+      fileCount: this.getFileCount(),
+      snippetCount: this.getSnippetCount()
+    };
   }
 
   async persist(): Promise<void> {
@@ -149,6 +197,50 @@ export class LexicalIndex {
 
   getFileCount(): number {
     return this.files.length;
+  }
+
+  getIndexedFiles(): FileIndexRecord[] {
+    return this.files.map((file) => ({
+      relativePath: file.relativePath,
+      mtimeMs: file.mtimeMs,
+      size: file.size,
+      snippetIds: [...file.snippetIds]
+    }));
+  }
+
+  private async addOrReplaceFile(file: FileCandidate): Promise<void> {
+    const existingIndex = this.files.findIndex((entry) => entry.relativePath === file.relativePath);
+    if (existingIndex >= 0) {
+      const [existing] = this.files.splice(existingIndex, 1);
+      if (existing) {
+        for (const snippetId of existing.snippetIds) {
+          this.snippetsById.delete(snippetId);
+        }
+      }
+    }
+
+    const snippets = await this.indexFile(file);
+    const snippetIds = snippets.map((snippet) => snippet.id);
+
+    this.files.push({
+      relativePath: file.relativePath,
+      mtimeMs: file.mtimeMs,
+      size: file.size,
+      snippetIds
+    });
+
+    for (const snippet of snippets) {
+      this.snippetsById.set(snippet.id, snippet);
+    }
+
+    this.files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+  }
+
+  private removeFile(relativePath: string, snippetIds: string[]): void {
+    this.files = this.files.filter((file) => file.relativePath !== relativePath);
+    for (const snippetId of snippetIds) {
+      this.snippetsById.delete(snippetId);
+    }
   }
 
   private async indexFile(file: FileCandidate): Promise<SnippetRecord[]> {

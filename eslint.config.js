@@ -16,7 +16,9 @@ module.exports = [
       },
       globals: {
         process: "readonly",
-        console: "readonly"
+        console: "readonly",
+        require: "readonly",
+        module: "readonly"
       }
     },
     plugins: {

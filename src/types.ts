@@ -40,6 +40,15 @@ export interface QueryResult {
   results: RankedSnippet[];
 }
 
+export interface IndexSyncSummary {
+  addedFiles: number;
+  modifiedFiles: number;
+  deletedFiles: number;
+  unchangedFiles: number;
+  fileCount: number;
+  snippetCount: number;
+}
+
 export interface SessionQueryEntry {
   at: string;
   query: string;

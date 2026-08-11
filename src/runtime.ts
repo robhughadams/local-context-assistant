@@ -2,7 +2,7 @@ import { LexicalIndex } from "./lexical-index";
 import { McpGateway } from "./mcp/mcp-gateway";
 import { SemanticNavigator } from "./semantic/semantic-navigator";
 import { SessionStore } from "./session-store";
-import type { SymbolQueryResult, ToolDefinition, ToolExecutionResult } from "./types";
+import type { IndexSyncSummary, SymbolQueryResult, ToolDefinition, ToolExecutionResult } from "./types";
 import { WorkspaceManager } from "./workspace-manager";
 
 export class AssistantRuntime {
@@ -26,6 +26,14 @@ export class AssistantRuntime {
       fileCount: index.getFileCount(),
       snippetCount: index.getSnippetCount()
     };
+  }
+
+  async syncIndex(): Promise<IndexSyncSummary> {
+    const files = await this.workspaceManager.listIndexableFiles(this.workspaceRoot);
+    const index = (await LexicalIndex.load(this.workspaceRoot)) ?? new LexicalIndex(this.workspaceRoot);
+    const summary = await index.syncFromFiles(files);
+    await index.persist();
+    return summary;
   }
 
   async ask(query: string, topK: number = 5): Promise<ReturnType<LexicalIndex["query"]>> {
