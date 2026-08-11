@@ -1,6 +1,12 @@
 # Local Context Assistant
 
+[![CI](https://github.com/robhughadams/local-context-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/robhughadams/local-context-assistant/actions/workflows/ci.yml)
+
 Local-first, open-source coding assistant with a practical MVP focused on lexical retrieval.
+
+## CI
+
+GitHub Actions runs `lint`, `test`, and `build` on pushes and pull requests targeting `main`.
 
 ## MVP scope (Milestones A-C subset)
 
