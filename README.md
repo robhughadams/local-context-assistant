@@ -171,3 +171,31 @@ Example policy file:
 - `npm run build`
 - `npm test`
 - `npm run lint`
+
+## Harness installation (local)
+
+`make install` performs local harness registration only (plus strictly required CLI build prerequisites).
+
+```bash
+make install
+```
+
+What it does:
+
+1. Ensures dependencies exist (`npm install` if `node_modules/` is missing).
+2. Ensures CLI artifact exists (`npm run build` if `dist/cli.js` is missing).
+3. Registers an `lca` command entry for each local harness by merging into existing JSON config files (non-destructive, idempotent):
+   - OpenCode: `~/.config/opencode/opencode.json`
+   - Claude: `~/.claude/settings.local.json`
+   - Kiro CLI: `~/.kiro/settings/cli.json`
+
+Each harness gets this command registration shape:
+
+```json
+{
+  "description": "Local Context Assistant CLI",
+  "command": "node",
+  "args": ["/absolute/path/to/local-context-assistant/dist/cli.js"],
+  "cwd": "/absolute/path/to/local-context-assistant"
+}
+```
