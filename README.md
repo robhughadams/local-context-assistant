@@ -186,8 +186,7 @@ What it does:
 2. Ensures CLI artifact exists (`npm run build` if `dist/cli.js` is missing).
 3. Registers an `lca` command entry for each local harness by merging into existing JSON config files (non-destructive, idempotent):
    - OpenCode:
-     - Ensures `~/.config/opencode/opencode.json` remains schema-valid (no invalid `commands` key)
-     - Writes `~/.config/opencode/commands/lca.md` as the command registration
+      - Writes `~/.config/opencode/commands/lca.md` as the command registration
    - Claude: `~/.claude/settings.local.json`
    - Kiro CLI: `~/.kiro/settings/cli.json`
 

@@ -78,16 +78,6 @@ function opencodeCommandTemplate() {
 
 function installOpencode() {
   const configDir = path.join(homeDir, ".config", "opencode");
-  const configPath = path.join(homeDir, ".config", "opencode", "opencode.json");
-  const config = ensureObject(readJson(configPath, {}));
-
-  // `commands` (plural) is not a valid OpenCode config key and breaks startup schema validation.
-  if (Object.prototype.hasOwnProperty.call(config, "commands")) {
-    delete config.commands;
-  }
-
-  writeJson(configPath, config);
-
   const commandsDir = path.join(configDir, "commands");
   const commandPath = path.join(commandsDir, "lca.md");
   fs.mkdirSync(commandsDir, { recursive: true });
@@ -98,7 +88,7 @@ function installOpencode() {
     fs.writeFileSync(commandPath, nextCommandFile, "utf8");
   }
 
-  return { configPath, commandPath };
+  return { commandPath };
 }
 
 function installClaude() {
@@ -153,7 +143,12 @@ function main() {
       continue;
     }
 
-    console.log(`- ${harness}: ${installPath.configPath} (config), ${installPath.commandPath} (command)`);
+    if ("configPath" in installPath) {
+      console.log(`- ${harness}: ${installPath.configPath} (config), ${installPath.commandPath} (command)`);
+      continue;
+    }
+
+    console.log(`- ${harness}: ${installPath.commandPath} (command)`);
   }
 }
 
