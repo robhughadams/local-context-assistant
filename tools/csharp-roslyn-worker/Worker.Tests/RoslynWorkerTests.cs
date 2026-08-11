@@ -201,8 +201,8 @@ public sealed class RoleTests
         var symbols = AllSymbols(source);
 
         Assert.Equal("class", Role(symbols, "Bar", SymbolKind.NamedType));
-        Assert.Equal("constructor", Role(symbols, "Bar", SymbolKind.Method, m => ((IMethodSymbol)m).MethodKind == MethodKind.Constructor));
-        Assert.Equal("destructor", Role(symbols, "Bar", SymbolKind.Method, m => ((IMethodSymbol)m).MethodKind == MethodKind.Destructor));
+        Assert.Equal("constructor", Role(symbols, ".ctor", SymbolKind.Method, m => ((IMethodSymbol)m).MethodKind == MethodKind.Constructor));
+        Assert.Equal("destructor", Role(symbols, "Finalize", SymbolKind.Method, m => ((IMethodSymbol)m).MethodKind == MethodKind.Destructor));
         Assert.Equal("method", RoleForSingle(symbols, "BarMethod"));
         Assert.Equal("operator", RoleForSingle(symbols, "op_Addition"));
         Assert.Equal("property", RoleForSingle(symbols, "Value"));

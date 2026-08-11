@@ -30,6 +30,18 @@ public static class RoslynWorker
 
     public static async Task<WorkerResponse> ExecuteAsync(WorkerRequest request)
     {
+        try
+        {
+            return await ExecuteCoreAsync(request);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return new WorkerResponse(false, new List<SymbolLocationDto>(), ex.Message);
+        }
+    }
+
+    private static async Task<WorkerResponse> ExecuteCoreAsync(WorkerRequest request)
+    {
         if (request.Version != 1)
         {
             throw new InvalidOperationException($"Unsupported protocol version: {request.Version}.");
@@ -68,13 +80,13 @@ public static class RoslynWorker
         EnsureMsBuildRegistered();
 
         using var workspace = MSBuildWorkspace.Create();
-        workspace.WorkspaceFailed += (_, args) =>
+        workspace.RegisterWorkspaceFailedHandler(args =>
         {
             if (args.Diagnostic.Kind == WorkspaceDiagnosticKind.Failure)
             {
                 Console.Error.WriteLine($"Workspace failure: {args.Diagnostic.Message}");
             }
-        };
+        });
 
         foreach (var project in projects)
         {
@@ -169,7 +181,7 @@ public static class RoslynWorker
                 emitted.Add(declaration);
                 foreach (var location in declaration.Locations)
                 {
-                    AddLocation(output, seen, declaration, "definition", "definition", root, symbol, location, "high");
+                    AddLocation(output, seen, declaration, "definition", RoleFor(declaration), root, symbol, location, "high");
                 }
             }
         }
