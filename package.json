@@ -9,7 +9,7 @@
     "lca": "dist/cli.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && sh -c 'if command -v dotnet >/dev/null 2>&1; then dotnet publish tools/csharp-roslyn-worker/Worker.csproj -c Release -o dist/roslyn; else echo \"warning: dotnet not found; skipping Roslyn worker build\"; fi'",
+    "build": "tsc -p tsconfig.build.json && sh -c 'if command -v dotnet >/dev/null 2>&1; then dotnet publish tools/csharp-roslyn-worker/Worker.csproj -c Release -o dist/roslyn; else echo \"warning: dotnet not found; skipping Roslyn worker build\"; fi' && sh -c 'if command -v go >/dev/null 2>&1; then go build -C tools/go-symbol-worker -o ../../dist/go/go-symbol-worker .; else echo \"warning: go not found; skipping Go worker build\"; fi' && sh -c 'if { command -v java >/dev/null 2>&1 || test -x \"${JAVA_HOME}/bin/java\"; } && command -v gradle >/dev/null 2>&1; then gradle -p tools/jvm-symbol-worker -q shadowJar && mkdir -p dist/jvm && cp tools/jvm-symbol-worker/build/libs/symbol-worker.jar dist/jvm/symbol-worker.jar; else echo \"warning: java or gradle not found; skipping JVM worker build\"; fi'",
     "test": "vitest run",
     "lint": "eslint .",
     "clean": "rm -rf dist .lca"

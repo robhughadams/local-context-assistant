@@ -1,4 +1,6 @@
 import { CSharpNavigator } from "./csharp-navigator";
+import { GoNavigator } from "./go-navigator";
+import { JvmNavigator } from "./jvm-navigator";
 import { PythonNavigator } from "./python-navigator";
 import { TypeScriptNavigator } from "./typescript-navigator";
 import type { SupportedSymbolLanguage, SymbolLocation, SymbolQueryResult } from "../types";
@@ -16,12 +18,21 @@ export class SemanticNavigator {
   private readonly typeScriptNavigator: TypeScriptNavigator;
   private readonly pythonNavigator: PythonNavigator;
   private readonly csharpNavigator: CSharpNavigator;
+  private readonly goNavigator: GoNavigator;
+  private readonly jvmNavigator: JvmNavigator;
 
-  constructor(workspaceRoot: string, csharpNavigator?: CSharpNavigator) {
+  constructor(
+    workspaceRoot: string,
+    csharpNavigator?: CSharpNavigator,
+    goNavigator?: GoNavigator,
+    jvmNavigator?: JvmNavigator
+  ) {
     this.workspaceRoot = workspaceRoot;
     this.typeScriptNavigator = new TypeScriptNavigator();
     this.pythonNavigator = new PythonNavigator();
     this.csharpNavigator = csharpNavigator ?? new CSharpNavigator();
+    this.goNavigator = goNavigator ?? new GoNavigator();
+    this.jvmNavigator = jvmNavigator ?? new JvmNavigator();
   }
 
   async querySymbol(symbol: string, options: SymbolQueryOptions): Promise<SymbolQueryResult> {
@@ -60,6 +71,46 @@ export class SemanticNavigator {
           mode === "find"
             ? this.csharpNavigator.findDefinitions(this.workspaceRoot, trimmedSymbol)
             : this.csharpNavigator.findReferences(this.workspaceRoot, trimmedSymbol)
+        );
+      }
+    }
+
+    if (language === "all" || language === "java" || language === "kotlin") {
+      if (!this.jvmNavigator.isAvailable()) {
+        if (language === "java" || language === "kotlin") {
+          throw new Error(
+            "JVM analysis is unavailable: the symbol worker jar was not found. Run `npm run build` to compile it."
+          );
+        }
+      } else {
+        const jvmLanguage = language === "all" ? "java" : null;
+        if (language === "java" || jvmLanguage !== null) {
+          tasks.push(
+            mode === "find"
+              ? this.jvmNavigator.findDefinitions(this.workspaceRoot, trimmedSymbol, "java")
+              : this.jvmNavigator.findReferences(this.workspaceRoot, trimmedSymbol, "java")
+          );
+        }
+        if (language === "kotlin" || jvmLanguage !== null) {
+          tasks.push(
+            mode === "find"
+              ? this.jvmNavigator.findDefinitions(this.workspaceRoot, trimmedSymbol, "kotlin")
+              : this.jvmNavigator.findReferences(this.workspaceRoot, trimmedSymbol, "kotlin")
+          );
+        }
+      }
+    }
+
+    if (language === "all" || language === "go") {
+      if (!this.goNavigator.isAvailable()) {
+        if (language === "go") {
+          throw new Error("Go analysis is unavailable: the Go worker was not found. Run `npm run build` to compile it.");
+        }
+      } else {
+        tasks.push(
+          mode === "find"
+            ? this.goNavigator.findDefinitions(this.workspaceRoot, trimmedSymbol)
+            : this.goNavigator.findReferences(this.workspaceRoot, trimmedSymbol)
         );
       }
     }

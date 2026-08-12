@@ -28,6 +28,20 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Install dependencies
         run: npm install
 
@@ -39,6 +53,13 @@ jobs:
 
       - name: Test C# worker
         run: dotnet test tools/csharp-roslyn-worker/Worker.Tests/Worker.Tests.csproj -c Release
+
+      - name: Test Go worker
+        run: go vet ./... && go test ./...
+        working-directory: tools/go-symbol-worker
+
+      - name: Test JVM worker
+        run: gradle -p tools/jvm-symbol-worker test shadowJar
 
       - name: Test
         run: npm test

@@ -48,7 +48,7 @@ class KotlinResolver(private val workspaceRoot: String) {
 
     fun refs(symbolName: String): List<SymbolLocation> {
         analyze()
-        val found = withDefinitions(symbolName, emit = true)
+        val found = withDefinitions(symbolName, emit = true, role = "definition-reference")
         val foundDescriptors = HashSet<org.jetbrains.kotlin.descriptors.DeclarationDescriptor>()
         for ((declaration, _) in found) {
             bindingContext[BindingContext.DECLARATION_TO_DESCRIPTOR, declaration]?.let { foundDescriptors.add(it) }
@@ -75,7 +75,7 @@ class KotlinResolver(private val workspaceRoot: String) {
         return sorted(output)
     }
 
-    private fun withDefinitions(symbolName: String, emit: Boolean): List<Pair<KtNamedDeclaration, Int>> {
+    private fun withDefinitions(symbolName: String, emit: Boolean, role: String? = null): List<Pair<KtNamedDeclaration, Int>> {
         val found = mutableListOf<Pair<KtNamedDeclaration, Int>>()
         for (file in files) {
             for (declaration in PsiTreeUtil.findChildrenOfType(file, KtNamedDeclaration::class.java)) {
@@ -86,15 +86,15 @@ class KotlinResolver(private val workspaceRoot: String) {
                 val offset = nameIdentifier.textRange.startOffset
                 found += declaration to offset
                 if (emit) {
-                    emitDefinition(file, declaration, offset, symbolName)
+                    emitDefinition(file, declaration, offset, symbolName, role ?: roleFor(declaration))
                 }
             }
         }
         return found
     }
 
-    private fun emitDefinition(file: KtFile, declaration: KtNamedDeclaration, offset: Int, symbolName: String) {
-        emit(file, position(file, offset), symbolName, "definition", roleFor(declaration), "high")
+    private fun emitDefinition(file: KtFile, declaration: KtNamedDeclaration, offset: Int, symbolName: String, role: String) {
+        emit(file, position(file, offset), symbolName, "definition", role, "high")
     }
 
     private fun roleFor(declaration: KtNamedDeclaration): String = when (declaration) {

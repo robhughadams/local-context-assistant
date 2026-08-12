@@ -56,7 +56,7 @@ export class AssistantRuntime {
   async querySymbol(
     symbol: string,
     mode: "find" | "refs",
-    language: "typescript" | "python" | "csharp" | "all" = "all"
+    language: "typescript" | "python" | "csharp" | "java" | "kotlin" | "go" | "all" = "all"
   ): Promise<SymbolQueryResult> {
     const navigator = new SemanticNavigator(this.workspaceRoot);
     return navigator.querySymbol(symbol, { mode, language });
