@@ -31,7 +31,7 @@ See `docs/adr/0001-analysis-is-strictly-local.md` for the full record.
 - Node.js 22+ (Node 18+ for runtime usage of the built CLI)
 - dotnet 10 SDK, only for C# symbol queries (`--lang csharp`)
 - Go SDK, only for Go symbol queries (`--lang go`)
-- JDK 21, only for Java/Kotlin symbol queries (`--lang java|kotlin`); Gradle is needed only to rebuild the JVM worker
+- JDK 21, only for Java/Kotlin symbol queries (`--lang java|kotlin`); Gradle 8.14.3 is fetched automatically by the checked-in wrapper when rebuilding the JVM worker
 
 ## Setup
 

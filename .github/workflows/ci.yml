@@ -59,7 +59,7 @@ jobs:
         working-directory: tools/go-symbol-worker
 
       - name: Test JVM worker
-        run: gradle -p tools/jvm-symbol-worker test shadowJar
+        run: ./gradlew -p tools/jvm-symbol-worker --no-daemon test shadowJar
 
       - name: Test
         run: npm test
