@@ -123,7 +123,7 @@ The assistant is composed of six core subsystems:
 
 ## 11) Future Extensions (Post-v0)
 
-- Additional languages (Java/Kotlin/C#/Go/Rust).
+- Additional languages (Java/Kotlin settled as a JVM worker - see `docs/adr/0005-jvm-go-symbol-workers.md`; Go settled as a native worker; Rust under evaluation as beyond-scope).
 - Optional local reranker and embedding model packs.
 - IDE plugins (JetBrains/VS Code) sharing the same local engine.
 - Team-safe shareable context bundles with explicit redaction rules.

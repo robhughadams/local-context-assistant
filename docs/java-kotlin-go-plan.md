@@ -164,8 +164,8 @@ Errors: `{"ok": false, "error": "..."}` on stdout plus non-zero exit. Node side 
 
 ## 9) Status
 
-- [ ] Phase 1: Go worker
-- [ ] Phase 2: JVM worker (Java + Kotlin)
-- [ ] Phase 3: Node integration
-- [ ] Phase 4: Build, CI, tests
-- [ ] Phase 5: Docs
+- [x] Phase 1: Go worker (commit `0c877c6`)
+- [x] Phase 2: JVM worker (Java + Kotlin) (commit `a271a70`)
+- [x] Phase 3: Node integration (commit `d99e02d`)
+- [x] Phase 4: Build, CI, tests (commit `d99e02d`)
+- [x] Phase 5: Docs (this section)

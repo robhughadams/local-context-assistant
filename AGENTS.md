@@ -7,7 +7,7 @@ Guidance for human and AI contributors working in this repository.
 Local-first, open-source coding assistant (`lca`) with:
 
 - Lexical retrieval over workspaces (`lca init`, `lca sync`, `lca ask`)
-- Baseline semantic symbol navigation (`lca symbol find|refs`) for TypeScript (compiler API), Python (heuristics); C# via a Roslyn/MSBuildWorkspace worker (see `docs/adr/0002-csharp-roslyn-worker.md`)
+- Baseline semantic symbol navigation (`lca symbol find|refs`) for TypeScript (compiler API), Python (heuristics); C# via a Roslyn/MSBuildWorkspace worker (see `docs/adr/0002-csharp-roslyn-worker.md`); Java + Kotlin via a JVM worker (JavaParser symbol solver / kotlin-compiler-embeddable); Go via a native go/packages + go/types worker (see `docs/adr/0005-jvm-go-symbol-workers.md`)
 - MCP-style tool gateway with deny-by-default policy and audit log (`lca mcp`)
 - Local-only data under `.lca/` (index, sessions, policy, action log)
 
@@ -31,11 +31,13 @@ CI (GitHub Actions, `.github/workflows/ci.yml`) runs lint, test, and build on No
 - `src/cli.ts`, `src/cli-runner.ts` - entry point and argument parsing/rendering
 - `src/workspace-manager.ts` - root discovery, file candidates, watcher hook
 - `src/lexical-index.ts`, `src/tokenizer.ts` - deterministic TF-IDF-style retrieval
-- `src/semantic/` - navigators: `typescript-navigator.ts` (compiler API), `python-navigator.ts` (heuristics), `csharp-navigator.ts` (spawns the Roslyn worker), `semantic-navigator.ts` (dispatch)
+- `src/semantic/` - navigators: `typescript-navigator.ts` (compiler API), `python-navigator.ts` (heuristics), `csharp-navigator.ts` (spawns the Roslyn worker), `go-navigator.ts` (spawns the Go worker), `jvm-navigator.ts` (spawns the Java/Kotlin worker), `worker-runner.ts` (shared stdin/stdout protocol runner), `semantic-navigator.ts` (dispatch)
 - `src/mcp/` - policy store, gateway, audit logger
 - `src/session-store.ts`, `src/config.ts`, `src/fs-utils.ts`, `src/runtime.ts`, `src/types.ts`
 - `tests/` - vitest suites (cli-json, lexical-index, mcp-gateway, semantic-navigator)
 - `tools/csharp-roslyn-worker/` - C# Roslyn worker console app (MSBuildWorkspace + SymbolFinder)
+- `tools/go-symbol-worker/` - Go worker (go/packages + go/types)
+- `tools/jvm-symbol-worker/` - JVM worker (JavaParser symbol solver, kotlin-compiler-embeddable)
 - `scripts/install-harnesses.js` - harness registration used by `make install`
 - `docs/` - implementation plan, ADR log (`docs/adr/`), and language-adapter plans
 

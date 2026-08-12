@@ -30,6 +30,8 @@ See `docs/adr/0001-analysis-is-strictly-local.md` for the full record.
 
 - Node.js 22+ (Node 18+ for runtime usage of the built CLI)
 - dotnet 10 SDK, only for C# symbol queries (`--lang csharp`)
+- Go SDK, only for Go symbol queries (`--lang go`)
+- JDK 21, only for Java/Kotlin symbol queries (`--lang java|kotlin`); Gradle is needed only to rebuild the JVM worker
 
 ## Setup
 
@@ -70,6 +72,11 @@ npx lca symbol refs discoverProjectRoot --lang all
 
 # C# definition lookup (requires dotnet SDK; worker built by npm run build)
 npx lca symbol find Calculator --lang csharp
+
+# Java / Kotlin / Go definition lookups (require JDK 21 / Go SDK; workers built by npm run build)
+npx lca symbol find Calculator --lang java
+npx lca symbol find Greeter --lang kotlin
+npx lca symbol find Greeter --lang go
 
 # initialize MCP tool policy file (deny-by-default)
 npx lca mcp init-policy
@@ -138,13 +145,17 @@ Retrieval uses:
 
 - `lca symbol find <symbol>` returns definition candidates.
 - `lca symbol refs <symbol>` returns reference candidates.
-- `--lang` accepts `typescript`, `python`, `csharp`, or `all` (default).
+- `--lang` accepts `typescript`, `python`, `csharp`, `java`, `kotlin`, `go`, or `all` (default).
 
 Output includes file/line/column plus confidence metadata:
 
 - TypeScript uses the local TypeScript compiler API (`source=typescript-compiler-api`) and returns high-confidence definitions/references in local workspace files.
 - Python uses pragmatic local heuristics (`source=python-heuristic`) with confidence levels (`high` / `medium` / `low`) to indicate certainty.
 - C# uses the Roslyn compiler API through a .NET worker (`source=roslyn-compiler-api`). The worker loads the workspace via MSBuildWorkspace, runs `dotnet restore` where needed, and resolves definitions and cross-project references with `SymbolFinder`. It is published to `dist/roslyn/` by `npm run build`; C# queries without a working `dotnet` are skipped in `--lang all` mode and error clearly in explicit `--lang csharp` mode.
+- Go uses a native worker (`source=go-type-checker`) that type-checks the module with `go/packages` + `go/types` (`dist/go/go-symbol-worker`).
+- Java uses JavaParser's symbol solver in the JVM worker (`source=javaparser-symbol-solver`); Kotlin uses the Kotlin compiler binding (`source=kotlin-compiler`). Both are served by one JAR (`dist/jvm/symbol-worker.jar`) selected via the `language` field. Like C#, missing toolchains skip quietly in `--lang all` and error clearly in explicit mode.
+
+Analysis of source is strictly local; module/Gradle/Maven/toolchain downloads are allowed (ADR-0001). See `docs/java-kotlin-go-plan.md` and `docs/adr/0005-jvm-go-symbol-workers.md`.
 
 ## MCP gateway policy model (milestone C)
 
